@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -23,6 +23,14 @@ export class OrderService {
     });
   }
 
+  async findByUserId(userId: number): Promise<Order[]> {
+    return await this.orderRepository.find({
+      where: { userId },
+      relations: ['user', 'orderItems', 'orderItems.product', 'payment'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async findOne(id: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
@@ -31,6 +39,20 @@ export class OrderService {
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+    return order;
+  }
+
+  async findOneForUser(id: number, userId: number, isAdmin: boolean): Promise<Order> {
+    const order = await this.findOne(id);
+
+    if (isAdmin) {
+      return order;
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('You do not have permission to view this order');
+    }
+
     return order;
   }
 
