@@ -18,14 +18,48 @@ export class ProductController {
 
   @Public()
   @Get()
-  findAll() {
-    return this.productService.findAll();
+  async findAll() {
+    const products = await this.productService.findAll();
+    return products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      image: product.image,
+      categoryId: product.categoryId,
+      categoryName: product.category?.name,
+      variants: product.variants?.map((variant) => ({
+        id: variant.id,
+        name: variant.name,
+        priceModifier: variant.priceModifier,
+        stock: variant.stock,
+        isAvailable: variant.isAvailable,
+      })),
+    }));
   }
 
   @Public()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const product = await this.productService.findOne(+id);
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      image: product.image,
+      categoryId: product.categoryId,
+      categoryName: product.category?.name,
+      variants: product.variants?.map((variant) => ({
+        id: variant.id,
+        name: variant.name,
+        priceModifier: variant.priceModifier,
+        stock: variant.stock,
+        isAvailable: variant.isAvailable,
+      })),
+    };
   }
 
   @UseGuards(AdminGuard)

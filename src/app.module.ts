@@ -13,6 +13,7 @@ import { PaymentModule } from './payment/payment.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { SeedModule } from './seed/seed.module';
+import { CartModule } from './cart/cart.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -35,6 +36,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     UserModule,
     CategoryModule,
     ProductModule,
+    CartModule,
     OrderModule,
     OrderItemModule,
     PaymentModule,
