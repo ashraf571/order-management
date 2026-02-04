@@ -116,15 +116,21 @@ export class OtpService {
 
     if (!storedOtp) {
       await this.checkAndIncrementAttempts(email);
-      return false;
+      throw new BadRequestException('OTP has expired or does not exist. Please request a new OTP.');
     }
 
     if (storedOtp !== otp) {
+      const attemptsKey = this.getAttemptsKey(email);
+      const currentAttempts = parseInt(await this.redisService.get(attemptsKey) || '0');
+      const remainingAttempts = this.MAX_ATTEMPTS - currentAttempts;
+
       await this.checkAndIncrementAttempts(email);
-      return false;
+
+      throw new BadRequestException(
+        `Invalid OTP. You have ${remainingAttempts} attempt(s) remaining.`
+      );
     }
 
-    // OTP is valid, delete it and reset attempts
     await this.redisService.del(otpKey);
     await this.resetAttempts(email);
 

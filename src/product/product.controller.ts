@@ -70,7 +70,11 @@ export class ProductController {
 
   @UseGuards(AdminGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.productService.remove(+id);
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.productService.remove(+id);
+    return {
+      message: 'Product deleted successfully',
+      productId: +id,
+    };
   }
 }

@@ -31,7 +31,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_DATABASE || 'ordering_system',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+      synchronize: false,
     }),
     BullModule.forRoot({
       connection: {

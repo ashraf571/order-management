@@ -22,10 +22,16 @@ export class AuthService {
 
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    const existingUser = await this.userService.findByEmail(registerDto.email);
+    const existingUserByEmail = await this.userService.findByEmail(registerDto.email);
+    if (existingUserByEmail) {
+      throw new ConflictException('User already exists with this email');
+    }
 
-    if (existingUser) {
-      throw new ConflictException('Email already exists');
+    if (registerDto.phone) {
+      const existingUserByPhone = await this.userService.findByPhone(registerDto.phone);
+      if (existingUserByPhone) {
+        throw new ConflictException('User already exists with this phone number');
+      }
     }
 
     if (registerDto.role && registerDto.role !== 'customer') {
@@ -35,7 +41,6 @@ export class AuthService {
     const { role, ...userData } = registerDto;
     const user = await this.userService.create(userData);
 
-    // Send welcome email (async, don't wait for it)
     if (user.email) {
       this.emailService.sendWelcomeEmail(user.email, user.name).catch(err => {
         console.error('Failed to send welcome email:', err);
@@ -79,11 +84,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Verify OTP
-    const isOtpValid = await this.otpService.verifyOtp(loginDto.email, loginDto.otp);
-    if (!isOtpValid) {
-      throw new UnauthorizedException('Invalid or expired OTP');
-    }
+    await this.otpService.verifyOtp(loginDto.email, loginDto.otp);
 
     return this.generateAuthResponse(user);
   }
@@ -161,11 +162,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Verify OTP
-    const isOtpValid = await this.otpService.verifyOtp(verifyDto.identifier, verifyDto.otp);
-    if (!isOtpValid) {
-      throw new UnauthorizedException('Invalid or expired OTP');
-    }
+    await this.otpService.verifyOtp(verifyDto.identifier, verifyDto.otp);
 
     return this.generateAuthResponse(user);
   }

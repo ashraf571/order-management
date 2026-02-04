@@ -13,10 +13,7 @@ export class OrderController {
   @UseGuards(CustomerGuard)
   @Post()
   create(@Body() createOrderDto: CreateOrderDto, @CurrentUser() user: any) {
-    return this.orderService.create({
-      ...createOrderDto,
-      userId: user.userId,
-    });
+    return this.orderService.create(user.userId, createOrderDto);
   }
 
   @UseGuards(CustomerGuard)

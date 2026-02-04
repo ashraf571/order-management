@@ -21,6 +21,9 @@ export class Order {
   @Column({ type: 'enum', enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' })
   status: string;
 
+  @Column({ type: 'enum', enum: ['COD', 'credit_card'], default: 'COD' })
+  paymentMethod: string;
+
   @Column({ type: 'text', nullable: true })
   shippingAddress: string;
 
@@ -29,6 +32,8 @@ export class Order {
 
   @OneToOne(() => Payment, payment => payment.order)
   payment: Payment;
+
+
 
   @CreateDateColumn()
   createdAt: Date;
