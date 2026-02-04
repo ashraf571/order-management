@@ -5,6 +5,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order } from './entities/order.entity';
 import { CartService } from '../cart/cart.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class OrderService {
@@ -12,13 +13,32 @@ export class OrderService {
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     private readonly cartService: CartService,
+    private readonly emailService: EmailService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
     const order = this.orderRepository.create(createOrderDto);
     const savedOrder = await this.orderRepository.save(order);
 
+    const fullOrder = await this.findOne(savedOrder.id);
+
     await this.cartService.clearCart(createOrderDto.userId);
+
+    if (fullOrder.user?.email) {
+      const orderItems = fullOrder.orderItems?.map((item) => ({
+        productName: item.product?.name || 'Unknown Product',
+        quantity: item.quantity,
+        price: item.price,
+      })) || [];
+
+      await this.emailService.sendOrderConfirmationEmail(fullOrder.user.email, {
+        orderId: fullOrder.id,
+        customerName: fullOrder.user.name || 'Customer',
+        totalAmount: fullOrder.totalAmount,
+        shippingAddress: fullOrder.shippingAddress || 'No address provided',
+        items: orderItems,
+      });
+    }
 
     return savedOrder;
   }
