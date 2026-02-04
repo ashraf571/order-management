@@ -6,11 +6,14 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UserModule } from '../user/user.module';
+import { EmailModule } from '../email/email.module';
 import { OtpService } from './services/otp.service';
+import { OtpDeliveryService } from './services/otp-delivery.service';
 
 @Module({
   imports: [
     UserModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -24,7 +27,7 @@ import { OtpService } from './services/otp.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, OtpService],
+  providers: [AuthService, JwtStrategy, OtpService, OtpDeliveryService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

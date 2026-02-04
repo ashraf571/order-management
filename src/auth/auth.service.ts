@@ -1,10 +1,13 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
 import { OtpService } from './services/otp.service';
+import { EmailService } from '../email/email.service';
 import { LoginWithPasswordDto, LoginWithOtpDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { UnifiedLoginDto, RequestOtpUnifiedDto, VerifyOtpUnifiedDto } from './dto/unified-login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
@@ -14,11 +17,35 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly otpService: OtpService,
+    private readonly emailService: EmailService,
   ) {}
 
-  /**
-   * Login with email and password
-   */
+
+  async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+    const existingUser = await this.userService.findByEmail(registerDto.email);
+
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
+    if (registerDto.role && registerDto.role !== 'customer') {
+      throw new BadRequestException('You can only register as a customer');
+    }
+
+    const { role, ...userData } = registerDto;
+    const user = await this.userService.create(userData);
+
+    // Send welcome email (async, don't wait for it)
+    if (user.email) {
+      this.emailService.sendWelcomeEmail(user.email, user.name).catch(err => {
+        console.error('Failed to send welcome email:', err);
+      });
+    }
+
+    return this.generateAuthResponse(user);
+  }
+
+
   async loginWithPassword(loginDto: LoginWithPasswordDto): Promise<AuthResponseDto> {
     const user = await this.userService.findByEmail(loginDto.email);
 
@@ -35,11 +62,8 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  /**
-   * Request OTP for login
-   */
   async requestOtp(email: string): Promise<{ message: string; expiresIn: number }> {
-    const otp = await this.otpService.generateAndStoreOtp(email);
+    await this.otpService.generateAndStoreOtp(email);
     const expiresIn = await this.otpService.getOtpExpiry(email);
 
     return {
@@ -48,9 +72,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Login with email and OTP
-   */
   async loginWithOtp(loginDto: LoginWithOtpDto): Promise<AuthResponseDto> {
     const user = await this.userService.findByEmail(loginDto.email);
 
@@ -67,9 +88,6 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  /**
-   * Generate JWT token and return auth response
-   */
   private async generateAuthResponse(user: any): Promise<AuthResponseDto> {
     const payload = {
       sub: user.id,
@@ -90,6 +108,66 @@ export class AuthService {
         role: user.role,
       },
     };
+  }
+
+  async login(loginDto: UnifiedLoginDto): Promise<AuthResponseDto> {
+    const user = await this.userService.findByEmailOrPhone(loginDto.identifier);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!loginDto.password) {
+      throw new BadRequestException('Password is required');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Password login not available for this user');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.generateAuthResponse(user);
+  }
+
+  async requestOtpUnified(requestDto: RequestOtpUnifiedDto): Promise<{ message: string; expiresIn: number; sentTo: string }> {
+    const user = await this.userService.findByEmailOrPhone(requestDto.identifier);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    await this.otpService.generateAndStoreOtp(requestDto.identifier);
+    const expiresIn = await this.otpService.getOtpExpiry(requestDto.identifier);
+
+    const isEmail = requestDto.identifier.includes('@');
+
+    return {
+      message: 'OTP sent successfully',
+      expiresIn,
+      sentTo: isEmail ? 'email' : 'phone',
+    };
+  }
+
+
+  async verifyOtpUnified(verifyDto: VerifyOtpUnifiedDto): Promise<AuthResponseDto> {
+    const user = await this.userService.findByEmailOrPhone(verifyDto.identifier);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify OTP
+    const isOtpValid = await this.otpService.verifyOtp(verifyDto.identifier, verifyDto.otp);
+    if (!isOtpValid) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    return this.generateAuthResponse(user);
   }
 
   /**

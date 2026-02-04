@@ -12,6 +12,7 @@ import { OrderItemModule } from './order-item/order-item.module';
 import { PaymentModule } from './payment/payment.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
+import { SeedModule } from './seed/seed.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -27,7 +28,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_DATABASE || 'ordering_system',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: process.env.DB_SYNCHRONIZE === 'true',
+      synchronize: true,
     }),
     RedisModule,
     AuthModule,
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     OrderModule,
     OrderItemModule,
     PaymentModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [

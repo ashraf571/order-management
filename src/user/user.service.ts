@@ -18,6 +18,7 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.userRepository.create({
       ...createUserDto,
+      role: 'customer',
       password: hashedPassword,
     });
     return await this.userRepository.save(user);
@@ -25,6 +26,21 @@ export class UserService {
 
   async findByEmail(email: string): Promise<User | null> {
     return await this.userRepository.findOne({ where: { email } });
+  }
+
+  async findByPhone(phone: string): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { phone } });
+  }
+
+  async findByEmailOrPhone(identifier: string): Promise<User | null> {
+    // Check if identifier is email (contains @) or phone number
+    const isEmail = identifier.includes('@');
+
+    if (isEmail) {
+      return await this.findByEmail(identifier);
+    } else {
+      return await this.findByPhone(identifier);
+    }
   }
 
   async findAll(): Promise<User[]> {

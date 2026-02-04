@@ -39,9 +39,4 @@ export class UserController {
     return this.userService.update(+id, updateUserDto);
   }
 
-  @Roles('admin')
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
-  }
 }
